@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { HealthService } from '../service/health.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { ROUTES } from '../../constants/route.constants';
+import { ROUTES } from '../../../constants/route.constants';
 import { ApiSuccessObjectResponse } from 'src/common/decorators/api-response.decorators';
 
 @ApiTags('Health')

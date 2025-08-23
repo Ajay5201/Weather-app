@@ -17,7 +17,7 @@ export const ApiSuccessObjectResponse = <T extends Type<any>>(
   options: Partial<{ description: string }> = {},
 ) => {
   return applyDecorators(
-    ApiExtraModels(model),
+    ApiExtraModels(SuccessObjectResponseDto, model), // 👈 add both
     ApiOkResponse({
       description: options.description || 'Successful response with object data',
       schema: {
