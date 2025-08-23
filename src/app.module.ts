@@ -7,6 +7,7 @@ import { HealthModule } from './modules/health/health.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { UserPreferenceModule } from './modules/user-preference/user-preference.module';
 import { WeatherModule } from './modules/weather/weather.module';
+import { CityLookModule } from './modules/city-lookup/city-lookup.module';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { WeatherModule } from './modules/weather/weather.module';
     HealthModule,
     RedisModule,
     UserPreferenceModule,
-    WeatherModule
+    WeatherModule,
+    CityLookModule
   ],
   controllers: [AppController],
   providers: [AppService],
