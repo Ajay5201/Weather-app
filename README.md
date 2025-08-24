@@ -8,35 +8,27 @@ A robust, scalable weather application backend built with NestJS, featuring real
 - **City Lookup**: Intelligent city search with autocomplete functionality
 - **User Preferences**: Save and manage favorite cities per session
 - **Caching**: Redis-based caching for improved performance
+- **Rate Limiting**: Configurable API rate limiting
 - **API Documentation**: Comprehensive Swagger/OpenAPI documentation
 - **Error Handling**: Global exception handling with detailed logging
 - **Health Monitoring**: Application health check endpoints
-- **Scalable Architecture**: Modular design with clean separation of concerns
 
 ## 🛠️ Tech Stack
 
-### **Core Framework**
-- **NestJS v11**: Modern, scalable Node.js framework with TypeScript support
-- **TypeScript v5.7**: Strong typing and modern JavaScript features
+### **NestJS + TypeScript**
+- Modern Node.js framework with decorators and dependency injection
+- Built-in validation, caching, and testing support
+- Scalable architecture with modules
 
-### **Database & Caching**
-- **MongoDB**: NoSQL database for user preferences and session data
-- **Mongoose**: MongoDB object modeling for Node.js
-- **Redis**: In-memory caching for weather data and city search results
+### **MongoDB**
+- Flexible schema for user preferences and session data
+- Fast queries for weather application data
+- Easy horizontal scaling
 
-### **External APIs**
-- **OpenWeatherMap API**: Weather data and forecasting
-- **Geoapify API**: Geocoding and city search services
-
-### **Development & Quality**
-- **ESLint + Prettier**: Code quality and formatting
-- **Jest**: Testing framework with coverage reporting
-- **Swagger/OpenAPI**: API documentation and testing
-
-### **Infrastructure**
-- **Docker**: Containerization support
-- **Environment Configuration**: Flexible configuration management
-- **CORS**: Cross-origin resource sharing enabled
+### **Redis**
+- In-memory caching reduces API calls to weather services
+- Sub-millisecond response times for cached data
+- Handles high concurrent requests efficiently
 
 ## 📋 Prerequisites
 
@@ -45,12 +37,12 @@ A robust, scalable weather application backend built with NestJS, featuring real
 - Redis 6.0+
 - npm or yarn package manager
 
-## 🚀 Quick Start
+## 🚀 Setup Instructions
 
 ### 1. Clone the Repository
 ```bash
 git clone <repository-url>
-cd weather-app
+cd weather-app-backend
 ```
 
 ### 2. Install Dependencies
@@ -59,283 +51,122 @@ npm install
 ```
 
 ### 3. Environment Configuration
+
 ```bash
 cp env.example .env
 ```
 
-Configure your `.env` file with the following variables:
-```env
-# Application Configuration
-NODE_ENV=development
-PORT=3000
+Configure your `.env` file:
 
-# Database Configuration
-MONGODB_URI=mongodb://localhost:27017/weather-app
+- **MongoDB**: Use local MongoDB or cloud service like MongoDB Atlas
+- **Redis**: Use Redis Cloud or local Redis instance
+- **OpenWeather API**: Get free API key from [openweathermap.org](https://openweathermap.org/api)
+- **BBCI API**: Use provided key or get your own
+- **Other settings**: Keep default values or adjust as needed
 
-# API Keys
-OPEN_WEATHER_API_KEY=your_openweather_api_key_here
-GEO_APIFY_API_KEY=your_geoapify_api_key_here
+### 4. Setup Required Services
 
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
+#### **MongoDB**
+```bash
+# Install MongoDB locally or use MongoDB Atlas (cloud)
+mongod
 ```
 
-### 4. Start Services
+#### **Redis**
 ```bash
-# Start MongoDB (if running locally)
-mongod
-
-# Start Redis (if running locally)
+# Use Redis Cloud (recommended) or install locally
 redis-server
+```
 
-# Start the application
+#### **Get API Keys**
+- **OpenWeatherMap**: Sign up at openweathermap.org → API Keys
+- **BBCI**: Use provided key or get your own
+
+### 5. Start the Application
+```bash
+# Development mode
 npm run start:dev
 ```
 
-### 5. Access the Application
-- **API**: http://localhost:3000/api/v1
-- **Documentation**: http://localhost:3000/api/docs
-- **Health Check**: http://localhost:3000/api/v1/health-check
+### 6. Verify Setup
+- **API**: http://localhost:3000
+- **Swagger Documentation**: http://localhost:3000/api/docs
+- **Health Check**: http://localhost:3000/health-check
 
-## 🏗️ Project Structure
+## 📚 API Documentation
+
+**Swagger UI**: `http://localhost:3000/api/docs`
+
+### **Main Endpoints**
+- `GET /weather/{city}/forecast` - Weather forecast
+- `GET /city-lookup/search?query={city}` - Search cities  
+- `POST /user/preferences` - Save user city preferences
+- `GET /user/preferences/{sessionId}` - Get saved cities
+- `DELETE /user/remove-city` - Remove saved city
+- `GET /weather/multi-forecast-for-session` - returns forecast deatils of all cities for a specific session
+
+
+## 🏗️ Project Architecture
 
 ```
 src/
 ├── common/                 # Shared DTOs and decorators
 ├── constants/             # Application constants
 ├── core/                  # Core application modules
-│   ├── database/         # Database configuration
+│   ├── database/         # MongoDB configuration
 │   ├── filters/          # Global exception filters
 │   ├── guards/           # Authentication guards
 │   └── interceptors/     # Response interceptors
 ├── modules/               # Feature modules
 │   ├── city-lookup/      # City search functionality
 │   ├── health/           # Health monitoring
-│   ├── redis/            # Redis service
+│   ├── redis/            # Redis caching service
 │   ├── user-preference/  # User preference management
 │   └── weather/          # Weather data services
 └── main.ts               # Application entry point
 ```
 
-## 📚 API Documentation
+## 🤔 Assumptions Made
 
-### **Weather Endpoints**
-
-#### Get Weather Forecast
-```http
-GET /api/v1/weather/{city}/forecast
-```
-
-**Response:**
-```json
-{
-  "city": "London",
-  "current": {
-    "temperature": 18.5,
-    "feelsLike": 17.2,
-    "condition": "scattered clouds",
-    "icon": "03d",
-    "humidity": 65,
-    "windSpeed": 3.2,
-    "windDirection": "SW",
-    "pressure": 1013,
-    "sunrise": "2024-01-15T07:30:00.000Z",
-    "sunset": "2024-01-15T16:45:00.000Z"
-  },
-  "hourly": [...],
-  "daily": [...]
-}
-```
-
-### **City Lookup Endpoints**
-
-#### Search Cities
-```http
-GET /api/v1/city-lookup/search?query=london
-```
-
-### **User Preference Endpoints**
-
-#### Add City to Preferences
-```http
-POST /api/v1/user/preferences
-{
-  "sessionId": "user-session-id",
-  "city": "London"
-}
-```
-
-#### Get User Preferences
-```http
-GET /api/v1/user/preferences/{sessionId}
-```
-
-#### Remove City from Preferences
-```http
-DELETE /api/v1/user/remove-city
-{
-  "sessionId": "user-session-id",
-  "city": "London"
-}
-```
-
-### **Health Check Endpoints**
-
-#### Application Health
-```http
-GET /api/v1/health-check
-```
-
-## 🔧 Development
-
-### **Available Scripts**
-```bash
-# Development
-npm run start:dev          # Start in development mode
-npm run start:debug        # Start with debugging
-
-# Building
-npm run build              # Build the application
-npm run start:prod         # Start production build
-
-# Code Quality
-npm run lint               # Run ESLint
-npm run format             # Format code with Prettier
-
-# Testing
-npm run test               # Run unit tests
-npm run test:watch         # Run tests in watch mode
-npm run test:cov           # Run tests with coverage
-npm run test:e2e           # Run end-to-end tests
-```
-
-### **Code Style**
-- Follow TypeScript best practices
-- Use meaningful variable and function names
-- Add JSDoc comments for public methods
-- Maintain consistent indentation (2 spaces)
-
-## 🧪 Testing
-
-### **Unit Tests**
-```bash
-npm run test
-```
-
-### **E2E Tests**
-```bash
-npm run test:e2e
-```
-
-### **Coverage Report**
-```bash
-npm run test:cov
-```
-
-## 🚀 Deployment
-
-### **Environment Variables**
-Ensure all required environment variables are set in production:
-- `NODE_ENV=production`
-- `MONGODB_URI`
-- `OPEN_WEATHER_API_KEY`
-- `GEO_APIFY_API_KEY`
-- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
-
-### **Docker Deployment**
-```bash
-# Build the image
-docker build -t weather-app .
-
-# Run the container
-docker run -p 3000:3000 weather-app
-```
-
-## 📊 Performance & Monitoring
-
-### **Caching Strategy**
-- **Weather Data**: 10 minutes TTL (OpenWeather API rate limits)
-- **City Search**: 12 hours TTL (static geographic data)
-- **User Preferences**: No expiration (user data)
-
-### **Health Monitoring**
-- Application health checks
-- Database connectivity monitoring
-- Redis connectivity monitoring
-- External API health status
-
-## 🔒 Security Considerations
-
-### **Input Validation**
-- All inputs are validated using class-validator
-- SQL injection protection through Mongoose
-- XSS protection through input sanitization
-
-### **API Security**
-- CORS enabled for cross-origin requests
-- Rate limiting recommended for production
-- API key validation for external services
+1. **Session-based users**: No authentication, users identified by session IDs
+2. **Data freshness**: Weather data cached for 10 minutes is acceptable
+3. **Geographic coverage**: Limited to OpenWeatherMap supported cities
+4. **API reliability**: External weather APIs have good uptime
+6. **Rate limits**: 100 requests per 15 minutes sufficient for typical usage
 
 ## 🚧 Known Limitations
 
-1. **API Rate Limits**: OpenWeather API has rate limits (1000 calls/day for free tier)
-2. **Session Management**: Basic session-based user preferences (no authentication)
-3. **Geographic Coverage**: Limited to cities supported by OpenWeather and Geoapify APIs
-4. **Data Accuracy**: Weather data accuracy depends on OpenWeather API
-5. **Cache Invalidation**: Manual cache TTL management
+1. **API Rate Limits**: OpenWeatherMap free tier limited to 1,000 calls/day
+2. **No User Authentication**: Basic session-based preferences only
+3. **Cache Management**: Simple TTL-based cache, no intelligent invalidation
+5. **No Offline Support**: Requires internet connection
+6. **Session Storage**: User data lost on server restart
+7. **Geographic Limits**: Weather data limited to OpenWeatherMap database
 
 ## 🚀 Future Improvements
 
-### **Short Term (1-2 months)**
-- [ ] Implement user authentication and authorization
-- [ ] Add rate limiting middleware
-- [ ] Implement WebSocket for real-time weather updates
-- [ ] Add weather alerts and notifications
-- [ ] Implement data validation middleware
+### **Short Term**
+- [ ] User authentication with JWT
+- [ ] WebSocket for real-time updates  
+- [ ] Weather alerts and notifications
+- [ ] Performance monitoring
+- [ ] Machine learning weather predictions
 
-### **Medium Term (3-6 months)**
-- [ ] Add weather history and trends
-- [ ] Implement multiple weather data providers
-- [ ] Add weather maps and visualizations
-- [ ] Implement push notifications
-- [ ] Add weather widget generation
+## 📊 Performance Metrics
 
-### **Long Term (6+ months)**
-- [ ] Machine learning for weather prediction
-- [ ] Multi-language support
-- [ ] Advanced analytics dashboard
-- [ ] Integration with IoT weather stations
-- [ ] Mobile app development
+### **Caching Strategy**
+- **Weather Data**: 10-minute TTL (balances freshness with API limits)
+- **City Search**: 12-hour TTL (geographic data changes rarely)
+- **User Preferences**: No expiration (user data persists until manual deletion)
 
-## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 🔒 Security Considerations
 
-## 📄 License
+### **API Security**
+- CORS enabled with configurable origins
+- Rate limiting prevents API abuse
+- API keys securely stored in environment variables
+- No sensitive data logged in production
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the API documentation at `/api/docs`
-- Review the health check endpoint for system status
-
-## 🙏 Acknowledgments
-
-- [NestJS](https://nestjs.com/) - The web framework used
-- [OpenWeatherMap](https://openweathermap.org/) - Weather data API
-- [Geoapify](https://www.geoapify.com/) - Geocoding services
-- [MongoDB](https://www.mongodb.com/) - Database solution
-- [Redis](https://redis.io/) - Caching solution
-
----
-
-**Built with ❤️ using NestJS and TypeScript**
+**Built with ❤️ using NestJS, MongoDB, and Redis**
