@@ -26,9 +26,9 @@ async function getApp() {
       credentials: false,
     });
 
-    app.setGlobalPrefix('api/v1', {
-      exclude: ROUTES.HEALTH_CHECK
-    });
+    // app.setGlobalPrefix('api/v1', {
+    //   exclude: ROUTES.HEALTH_CHECK
+    // });
 
     // Apply global pipes, filters, and interceptors
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
@@ -110,10 +110,7 @@ if (require.main === module) {
       },
     });
 
-    
-
-    
-
+  
     // Apply global pipes, filters, and interceptors
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
@@ -121,7 +118,7 @@ if (require.main === module) {
 
     app.setGlobalPrefix('api/v1', {
       exclude: [
-        { path: 'health-check', method: RequestMethod.GET },
+        // { path: 'health-check', method: RequestMethod.GET },
         { path: '/', method: RequestMethod.GET },
       ],
     });
