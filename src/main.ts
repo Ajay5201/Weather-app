@@ -40,11 +40,34 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   // CORS configuration
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
+  
   app.enableCors({
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    origin: isProduction 
+      ? [
+          'https://animated-daffodil-13ba13.netlify.app',
+          'https://your-production-frontend.com', // Add other production domains
+        ]
+      : [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:4200',
+          'http://localhost:5173', // Vite
+          'http://localhost:8080',
+          'https://animated-daffodil-13ba13.netlify.app', // Allow in dev too for testing
+        ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+      'Access-Control-Allow-Headers',
+    ],
+    credentials: true, // Set to true if you need cookies/auth headers
+    optionsSuccessStatus: 200, // For legacy browser support
+    preflightContinue: false,
   });
 
   // Swagger documentation
@@ -58,7 +81,7 @@ async function bootstrap() {
     .addTag('User Preferences', 'User preference management endpoints')
     .addBearerAuth()
     .addServer('http://localhost:3000', 'Development server')
-    .addServer('https://api.weatherapp.com', 'Production server')
+    .addServer('https://weather-app-ajay5201s-projects.vercel.app', 'Production server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -79,6 +102,7 @@ async function bootstrap() {
   console.log(`🏥 Health Check available at: http://localhost:${port}/api/v1/health-check`);
   console.log(`🌍 Environment: ${configService.get<string>('NODE_ENV', 'development')}`);
   console.log(`📦 Version: ${configService.get<string>('APP_VERSION', '1.0.0')}`);
+  console.log(`🌐 CORS enabled for: ${isProduction ? 'Production origins' : 'Development origins'}`);
 }
 
 bootstrap().catch((error) => {
