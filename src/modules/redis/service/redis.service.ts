@@ -14,15 +14,12 @@ export class RedisService implements OnModuleDestroy {
 
   private async initializeRedis(): Promise<void> {
     try {
-     
       this.redis = new Redis({
-        host: this.configService.get<string>('REDIS_HOST', 'localhost'),
-        port: this.configService.get<number>('REDIS_PORT', 6379),
+        host: this.configService.get<string>('REDIS_HOST'),
+        port: this.configService.get<number>('REDIS_PORT'),
+        username: this.configService.get<string>('REDIS_USERNAME', 'default'),
         password: this.configService.get<string>('REDIS_PASSWORD'),
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
-        connectTimeout: 10000,
-        commandTimeout: 5000,
+        tls: this.configService.get<string>('REDIS_TLS_ENABLED') === 'true' ? {} : undefined,
       });
 
       this.redis.on('error', (error) => {
@@ -63,9 +60,7 @@ export class RedisService implements OnModuleDestroy {
         this.logger.warn('Redis not connected, skipping get operation');
         return null;
       }
-
-      const result = await this.redis.get(key);
-      return result;
+      return await this.redis.get(key);
     } catch (error) {
       this.logger.error(`Failed to get key ${key}:`, error);
       return null;
@@ -80,11 +75,11 @@ export class RedisService implements OnModuleDestroy {
       }
 
       if (ttl) {
+        console.log(value)
         await this.redis.setex(key, ttl, value);
       } else {
         await this.redis.set(key, value);
       }
-      
       return true;
     } catch (error) {
       this.logger.error(`Failed to set key ${key}:`, error);
@@ -98,7 +93,6 @@ export class RedisService implements OnModuleDestroy {
         this.logger.warn('Redis not connected, skipping delete operation');
         return false;
       }
-
       const result = await this.redis.del(key);
       return result > 0;
     } catch (error) {
