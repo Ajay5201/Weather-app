@@ -1,4 +1,3 @@
-// weather.controller.ts
 import { Controller, Post, Body, Get, Param, UseGuards } from '@nestjs/common';
 import { ROUTES } from '../../../constants/route.constants';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';

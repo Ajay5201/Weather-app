@@ -1,4 +1,3 @@
-// dto/city-search-result.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CitySearchResultDto {

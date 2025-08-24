@@ -1,4 +1,3 @@
-// user-preference.repository.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -30,7 +29,7 @@ export class UserPreferenceRepository {
       throw new NotFoundException(`Session with ID ${sessionId} not found`);
     }
   
-    if (!pref.cities.includes(city)) {
+    if (!pref.cities.includes(city )) {
       throw new NotFoundException(`City "${city}" not found in preferences`);
     }
   

@@ -1,4 +1,3 @@
-// city-lookup.controller.ts
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ApiSuccessArrayResponse } from '../../../common/decorators/api-response.decorators';

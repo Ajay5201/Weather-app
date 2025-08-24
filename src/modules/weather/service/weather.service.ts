@@ -1,4 +1,3 @@
-// weather.service.ts
 import { Injectable, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/modules/redis/service/redis.service';
@@ -33,12 +32,14 @@ export class WeatherService {
   async getWeatherForecast(city: string): Promise<WeatherResponseDto> {
     try {
       // Input sanitization
+      console.log(city)
       const sanitizedCity = this.sanitizeCityName(city);
       
       const cacheKey = `weather:${sanitizedCity.toLowerCase()}`;
       const cached = await this.redisService.get(cacheKey);
       
       if (cached) {
+        console.log('yes')
         return JSON.parse(cached);
       }
 

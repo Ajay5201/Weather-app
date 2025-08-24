@@ -1,4 +1,3 @@
-// user-preference.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -36,8 +35,5 @@ export class UserPreference extends Document {
 
 export const UserPreferenceSchema = SchemaFactory.createForClass(UserPreference);
 
-// Add compound index for efficient queries
 UserPreferenceSchema.index({ sessionId: 1, cities: 1 });
 
-// Add text index for city search (if needed in future)
-// UserPreferenceSchema.index({ cities: 'text' });

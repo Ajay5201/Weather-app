@@ -1,4 +1,3 @@
-// weather.controller.ts
 import { Controller, Post, Body, Get, Param, Delete } from '@nestjs/common';
 import { UserPreferenceService, } from '../service/user-preference.service';
 import { CreatePreferenceDto } from '../dto/create-preference.dto';
@@ -12,7 +11,7 @@ import { RemovePreferenceDto } from '../dto/remove-preference.dto';
 
 
 @Controller(ROUTES.USER.CONTROLLER)
-@ApiTags('Users')
+@ApiTags('User Preferences')
 export class UserPreferenceController {
   constructor(private readonly userPreferenceService: UserPreferenceService) {}
 

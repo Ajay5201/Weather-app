@@ -1,4 +1,3 @@
-// weather.service.ts
 import { Injectable } from '@nestjs/common';
 
 import { UserPreferenceRepository } from '../repository/user-preference.repository';
@@ -18,7 +17,7 @@ export class UserPreferenceService {
 
   // remove city to user preferences
   async removeCity(sessionId: string, city: string) {
-    return this.userPrefRepo.removeCity(sessionId, city);
+    return this.userPrefRepo.removeCity(sessionId, city.toLocaleLowerCase());
   }
 
   // Get user cities

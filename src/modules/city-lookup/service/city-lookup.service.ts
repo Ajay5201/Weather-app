@@ -1,22 +1,21 @@
-// city-lookup.service.ts
 import { Injectable, Logger, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
 import { firstValueFrom } from 'rxjs';
 import { CitySearchResultDto } from '../dto/city-lookup-response.dto';
 import { URL_CONSTANTS } from '../../../constants/url.constants';
+import { RedisService } from 'src/modules/redis/service/redis.service';
 
 @Injectable()
 export class CityLookUpService {
   private readonly logger = new Logger(CityLookUpService.name);
-  private redis: Redis;
   private readonly geoapifyApiKey: string;
   private readonly citySearchCacheTTL: number;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,  
   ) {
     const geoapifyApiKey = this.configService.get<string>('GEO_APIFY_API_KEY');
     this.citySearchCacheTTL = this.configService.get<number>('CITY_SEARCH_CACHE_TTL', 12 * 3600);
@@ -27,31 +26,6 @@ export class CityLookUpService {
       );
     }
     this.geoapifyApiKey = geoapifyApiKey;
-
-    this.initializeRedis();
-  }
-
-  private initializeRedis(): void {
-    try {
-      this.redis = new Redis({
-        host: this.configService.get<string>('REDIS_HOST', 'localhost'),
-        port: this.configService.get<number>('REDIS_PORT', 6379),
-        password: this.configService.get<string>('REDIS_PASSWORD'),
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
-      });
-
-      this.redis.on('error', (error) => {
-        this.logger.error('Redis connection error:', error);
-      });
-
-      this.redis.on('connect', () => {
-        this.logger.log('Redis connected successfully');
-      });
-    } catch (error) {
-      this.logger.error('Failed to initialize Redis:', error);
-      
-    }
   }
 
   async search(query: string): Promise<CitySearchResultDto[]> {
@@ -63,15 +37,15 @@ export class CityLookUpService {
         return [];
       }
 
-      const cached = await this.getFromCache(sanitizedQuery);
+      const cacheKey = `city-search:${sanitizedQuery}`;
+      const cached = await this.redisService.get(cacheKey);   // ✅ use RedisService
       if (cached) {
-        return cached;
+        return JSON.parse(cached);
       }
 
       const results = await this.fetchFromAPI(sanitizedQuery);
-      
-      await this.setCache(sanitizedQuery, results);
-      
+      await this.redisService.set(cacheKey, JSON.stringify(results), this.citySearchCacheTTL);
+
       return results;
     } catch (error) {
       this.logger.error(`City search failed for query "${query}":`, error);
@@ -90,34 +64,6 @@ export class CityLookUpService {
     }
     
     return sanitized.toLowerCase();
-  }
-
-  private async getFromCache(query: string): Promise<CitySearchResultDto[] | null> {
-    try {
-      if (!this.redis || this.redis.status !== 'ready') {
-        return null;
-      }
-      
-      const cacheKey = `city-search:${query}`;
-      const cached = await this.redis.get(cacheKey);
-      return cached ? JSON.parse(cached) : null;
-    } catch (error) {
-      this.logger.warn('Cache retrieval failed:', error);
-      return null;
-    }
-  }
-
-  private async setCache(query: string, results: CitySearchResultDto[]): Promise<void> {
-    try {
-      if (!this.redis || this.redis.status !== 'ready') {
-        return;
-      }
-      
-      const cacheKey = `city-search:${query}`;
-      await this.redis.set(cacheKey, JSON.stringify(results), 'EX', this.citySearchCacheTTL);
-    } catch (error) {
-      this.logger.warn('Cache setting failed:', error);
-    }
   }
 
   private async fetchFromAPI(query: string): Promise<CitySearchResultDto[]> {

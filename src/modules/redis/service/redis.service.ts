@@ -1,4 +1,3 @@
-// redis.service.ts
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -13,8 +12,10 @@ export class RedisService implements OnModuleDestroy {
     this.initializeRedis();
   }
 
-  private initializeRedis(): void {
+  private async initializeRedis(): Promise<void> {
     try {
+      console.log('test')
+      console.log(this.configService.get<string>('REDIS_HOST'))
       this.redis = new Redis({
         host: this.configService.get<string>('REDIS_HOST', 'localhost'),
         port: this.configService.get<number>('REDIS_PORT', 6379),
@@ -48,6 +49,8 @@ export class RedisService implements OnModuleDestroy {
       this.redis.on('reconnecting', () => {
         this.logger.log('Redis reconnecting...');
       });
+
+      await this.redis.connect();
 
     } catch (error) {
       this.logger.error('Failed to initialize Redis:', error);
