@@ -37,6 +37,7 @@ export class WeatherService {
   async getWeatherForecast(city: string): Promise<WeatherResponseDto> {
     try {
      
+      console.log(city)
 
       const sanitizedCity = this.sanitizeCityName(city);
       
@@ -44,6 +45,7 @@ export class WeatherService {
       const cached = await this.redisService.get(cacheKey);
       
       if (cached) {
+        console.log('cached')
         return JSON.parse(cached);
       }
 
