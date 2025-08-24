@@ -20,8 +20,8 @@ async function bootstrap() {
     next();
   });
 
-  // Global prefix
-  app.setGlobalPrefix('api/v1');
+  // // Global prefix
+  // app.setGlobalPrefix('api/v1');
 
   // CORS configuration - UPDATED
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
