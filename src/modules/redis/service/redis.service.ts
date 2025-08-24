@@ -14,8 +14,7 @@ export class RedisService implements OnModuleDestroy {
 
   private async initializeRedis(): Promise<void> {
     try {
-      console.log('test')
-      console.log(this.configService.get<string>('REDIS_HOST'))
+     
       this.redis = new Redis({
         host: this.configService.get<string>('REDIS_HOST', 'localhost'),
         port: this.configService.get<number>('REDIS_PORT', 6379),
