@@ -15,7 +15,7 @@ export class SuccessObjectResponseDto<T> extends AbstractResponseDto {
   /**
    * Object data
    */
-  @ApiProperty()
+  @ApiProperty({ type: Object })
   data: T;
 
   /**
