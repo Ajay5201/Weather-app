@@ -16,14 +16,14 @@ let app: any;
 
 async function getApp() {
   if (!app) {
-    app = await NestFactory.create(AppModule, {
-      // Configure CORS at app creation level for Vercel
-      cors: {
-        origin: ['https://animated-daffodil-13ba13.netlify.app', 'http://localhost:3000', 'http://localhost:3001'],
-        methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-        credentials: true,
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-      },
+    app = await NestFactory.create(AppModule);
+
+    // Apply CORS with specific origins for security
+    app.enableCors({
+      origin: ['*'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     });
 
     // Apply global pipes, filters, and interceptors
@@ -37,24 +37,14 @@ async function getApp() {
         swaggerOptions: {
           persistAuthorization: true,
         },
-        customSiteTitle: 'NestJS API Documentation',
-        customCss: `
-          @import url('https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui.css');
-          .swagger-ui .topbar { display: none; }
-        `,
-        customJs: [
-          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-bundle.min.js',
-          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-standalone-preset.min.js',
+        customCssUrl: [
+          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css',
         ],
-        customJsStr: `
-          window.addEventListener('DOMContentLoaded', function() {
-            if (typeof SwaggerUIBundle !== 'undefined') {
-              console.log('SwaggerUIBundle loaded successfully');
-            } else {
-              console.error('SwaggerUIBundle not found');
-            }
-          });
-        `,
+        customJs: [
+          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js',
+        ],
+        customSiteTitle: 'NestJS API Documentation',
       };
 
       const config = new DocumentBuilder()
@@ -82,28 +72,33 @@ async function getApp() {
   return app;
 }
 
-// Export for Vercel - Fixed to properly handle requests through NestJS
+// Export for Vercel
 module.exports = async (req: any, res: any) => {
-  const nestApp = await getApp();
-  
-  // Handle preflight OPTIONS requests explicitly
+  // Handle CORS for preflight OPTIONS requests before NestJS processes them
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://animated-daffodil-13ba13.netlify.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ];
+
+  // Set CORS headers for all requests
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With');
+
+  // Handle OPTIONS requests immediately without going through NestJS auth
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', 'https://animated-daffodil-13ba13.netlify.app');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400');
     res.status(200).end();
     return;
   }
 
-  // Set CORS headers for actual requests
-  res.setHeader('Access-Control-Allow-Origin', 'https://animated-daffodil-13ba13.netlify.app');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  // Use the NestJS application to handle the request properly
-  const httpAdapter = nestApp.getHttpAdapter();
-  return httpAdapter.getInstance()(req, res);
+  const nestApp = await getApp();
+  return nestApp.getHttpAdapter().getInstance()(req, res);
 };
 
 // Also export as default
@@ -114,8 +109,8 @@ if (require.main === module) {
   async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       cors: {
-        origin: ['https://animated-daffodil-13ba13.netlify.app', 'http://localhost:3000', 'http://localhost:3001'],
-        methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+        origin: [ '*'],
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
       },
@@ -126,26 +121,17 @@ if (require.main === module) {
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
 
-    // Set up Swagger documentation with proper CDN assets
+    // Set up Swagger documentation with CDN assets
     const options = {
       swaggerOptions: {
         persistAuthorization: true,
       },
-      customSiteTitle: 'NestJS API Documentation',
-      customCss: `
-        @import url('https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui.css');
-        .swagger-ui .topbar { display: none; }
-      `,
+      customCssUrl: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css'],
       customJs: [
-        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-bundle.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-standalone-preset.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js',
       ],
-      customJsStr: `
-        console.log('Swagger UI custom JS loaded');
-        window.addEventListener('load', function() {
-          console.log('Page fully loaded, SwaggerUIBundle available:', typeof SwaggerUIBundle !== 'undefined');
-        });
-      `,
+      customSiteTitle: 'NestJS API Documentation',
     };
 
     const config = new DocumentBuilder()
