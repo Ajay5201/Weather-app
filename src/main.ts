@@ -22,7 +22,7 @@ async function getApp() {
     app.enableCors({
       origin: '*',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-      credentials: true,
+      credentials: false,
     });
 
     // Apply global pipes, filters, and interceptors
