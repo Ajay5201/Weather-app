@@ -79,7 +79,7 @@ async function bootstrap() {
     .addTag('Weather', 'Weather-related endpoints for forecasting and current conditions')
     .addTag('City Lookup', 'City search and geocoding endpoints')
     .addTag('User Preferences', 'User preference management endpoints')
-    .addBearerAuth()
+    // .addBearerAuth()
     .addServer('http://localhost:3000', 'Development server')
     .addServer('https://weather-app-ajay5201s-projects.vercel.app', 'Production server')
     .build();
