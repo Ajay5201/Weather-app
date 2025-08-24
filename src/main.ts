@@ -117,10 +117,10 @@ if (require.main === module) {
     app.useGlobalInterceptors(new ResponseInterceptor());
 
     app.setGlobalPrefix('api/v1', {
-      exclude: [
-        // { path: 'health-check', method: RequestMethod.GET },
-        { path: '/', method: RequestMethod.GET },
-      ],
+      // exclude: [
+      //   // { path: 'health-check', method: RequestMethod.GET },
+      //   { path: '/', method: RequestMethod.GET },
+      // ],
     });
   
 
