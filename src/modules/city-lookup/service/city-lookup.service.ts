@@ -30,6 +30,7 @@ export class CityLookUpService {
       const cacheKey = `city-search:${sanitizedQuery}`;
       const cached = await this.redisService.get(cacheKey);   
       if (cached) {
+        console.log("returns forecast cached query data" , query)
         return JSON.parse(cached);
       }
 

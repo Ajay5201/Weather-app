@@ -44,6 +44,7 @@ export class WeatherService {
       const cached = await this.redisService.get(cacheKey);
       
       if (cached) {
+        console.log("returns forecast cached city data" , city)
         return JSON.parse(cached);
       }
 
