@@ -11,5 +11,6 @@ import { UserPreference, UserPreferenceSchema } from './entity/user-preference.e
   imports: [HttpModule, MongooseModule.forFeature([{ name: UserPreference.name, schema: UserPreferenceSchema }])],   // ✅ Required
   controllers: [UserPreferenceController],
   providers: [UserPreferenceService,UserPreferenceRepository],
+  exports:[UserPreferenceService]
 })
 export class UserPreferenceModule {}

@@ -11,8 +11,8 @@ export class UserPreferenceService {
   ) {}
 
   // Add city to user preferences
-  async addCity(sessionId: string, city: string) {
-    return this.userPrefRepo.addCity(sessionId, city);
+  async CreateUserOrAddCityIfUserExist(sessionId: string, city: string) {
+    return this.userPrefRepo.CreateUserOrAddCityIfUserExist(sessionId, city);
   }
 
   // remove city to user preferences

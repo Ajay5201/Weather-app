@@ -12,7 +12,7 @@ export class UserPreferenceRepository {
   ) {}
 
   // Create or update user preferences
-  async addCity(sessionId: string, city: string): Promise<UserPreference> {
+  async CreateUserOrAddCityIfUserExist(sessionId: string, city: string): Promise<UserPreference> {
     return this.userPrefModel.findOneAndUpdate(
       { sessionId },
       { $addToSet: { cities: city.toLocaleLowerCase() } }, 
