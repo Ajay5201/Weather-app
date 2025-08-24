@@ -17,6 +17,7 @@ let app: any;
 async function getApp() {
   if (!app) {
     app = await NestFactory.create(AppModule);
+    app.setGlobalPrefix('api/v1');
 
     // Apply CORS with specific origins for security
     app.enableCors({
@@ -77,9 +78,7 @@ module.exports = async (req: any, res: any) => {
   // Handle CORS for preflight OPTIONS requests before NestJS processes them
   const origin = req.headers.origin;
   const allowedOrigins = [
-    'https://animated-daffodil-13ba13.netlify.app',
-    'http://localhost:3000',
-    'http://localhost:3001'
+    '*'
   ];
 
   // Set CORS headers for all requests
@@ -116,6 +115,7 @@ if (require.main === module) {
       },
     });
 
+    app.setGlobalPrefix('api/v1');
     // Apply global pipes, filters, and interceptors
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
@@ -152,7 +152,7 @@ if (require.main === module) {
     });
     SwaggerModule.setup('api/docs', app, document, options);
 
-    const port = 3002;
+    const port = 3000;
     await app.listen(port);
     console.log(`Application is running on: http://localhost:${port}`);
     console.log(`Swagger is running on: http://localhost:${port}/api/docs`);
