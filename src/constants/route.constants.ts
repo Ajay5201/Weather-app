@@ -4,7 +4,7 @@
 export const ROUTES = {
  
   HEALTH_CHECK: {
-    CONTROLLER: 'health-check', // Changed from 'users'
+    CONTROLLER: ['/','health-check'], // Changed from 'users'
   },
   USER: {
     CONTROLLER: 'user', 

@@ -95,7 +95,7 @@ export class CityLookUpService {
 
   private transformBBCResponse(results: any): CitySearchResultDto[] {
     return results
-    .filter((result: any) => result.name)
+    .filter((result: any) => result.name && !result.name.toLocaleLowerCase().includes('airport'))
     .map((result: any) => ({
       name: result.name,
       country: result.container || '',

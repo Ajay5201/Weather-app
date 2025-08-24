@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
@@ -11,6 +11,7 @@ import {
   SuccessMessageResponseDto,
   SuccessPaginatedResponseDto,
 } from './common/dto';
+import { ROUTES } from './constants/route.constants';
 
 let app: any;
 
@@ -23,6 +24,10 @@ async function getApp() {
       origin: '*',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: false,
+    });
+
+    app.setGlobalPrefix('api/v1', {
+      exclude: ROUTES.HEALTH_CHECK
     });
 
     // Apply global pipes, filters, and interceptors
@@ -105,10 +110,22 @@ if (require.main === module) {
       },
     });
 
+    
+
+    
+
     // Apply global pipes, filters, and interceptors
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
+
+    app.setGlobalPrefix('api/v1', {
+      exclude: [
+        { path: 'health-check', method: RequestMethod.GET },
+        { path: '/', method: RequestMethod.GET },
+      ],
+    });
+  
 
     // Set up Swagger documentation with proper CDN assets
     const options = {

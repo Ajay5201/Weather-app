@@ -75,7 +75,6 @@ export class RedisService implements OnModuleDestroy {
       }
 
       if (ttl) {
-        console.log(value)
         await this.redis.setex(key, ttl, value);
       } else {
         await this.redis.set(key, value);
