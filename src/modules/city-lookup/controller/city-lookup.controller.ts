@@ -1,19 +1,34 @@
-// city-search.controller.ts
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+// city-lookup.controller.ts
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiSuccessArrayResponse } from '../../../common/decorators/api-response.decorators';
+import { RateLimit, RateLimits } from '../../../common/decorators/rate-limit.decorator';
+import { RateLimitGuard } from '../../../core/guards/rate-limit.guard';
+
 import { CityLookUpService } from '../service/city-lookup.service';
 import { CitySearchResultDto } from '../dto/city-lookup-response.dto';
+import { ROUTES } from '../../../constants/route.constants';
 
-
-@ApiTags('Cities')
-@Controller('cities')
+@Controller(ROUTES.CITY_LOOK_UP.CONTROLLER)
+@ApiTags('City Lookup')
+@UseGuards(RateLimitGuard)
 export class CityLookUpController {
   constructor(private readonly cityLookUpService: CityLookUpService) {}
 
-  @Get('search')
-  @ApiOperation({ summary: 'Search cities by name' })
-  @ApiOkResponse({ type: [CitySearchResultDto] })
-  async search(@Query('query') query: string): Promise<CitySearchResultDto[]> {
+  @Get(ROUTES.CITY_LOOK_UP.SEARCH)
+  @RateLimit(RateLimits.CITY_SEARCH)
+  @ApiOperation({ 
+    summary: 'Search for cities',
+    description: 'Search for cities with autocomplete functionality using geocoding services'
+  })
+  @ApiQuery({ 
+    name: 'query', 
+    description: 'City name or partial name to search for',
+    example: 'london',
+    required: true
+  })
+  @ApiSuccessArrayResponse(CitySearchResultDto)
+  async searchCities(@Query('query') query: string): Promise<CitySearchResultDto[]> {
     return this.cityLookUpService.search(query);
   }
 }

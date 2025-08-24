@@ -1,117 +1,173 @@
 // weather.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-
+import { Injectable, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from 'src/modules/redis/service/redis.service';
-
 import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { CurrentWeatherDto, DailyWeatherDto, HourlyWeatherDto, WeatherResponseDto } from '../dto/weather-response.dto';
 import { URL_CONSTANTS } from '../../../constants/url.constants';
-
 
 @Injectable()
 export class WeatherService {
   private readonly apiKey: string;
+  private readonly weatherCacheTTL: number;
+  private readonly logger = new Logger(WeatherService.name);
 
   constructor(
     private readonly redisService: RedisService,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {
+    const apiKey = this.configService.get<string>('OPEN_WEATHER_API_KEY');
+    this.weatherCacheTTL = this.configService.get<number>('WEATHER_CACHE_TTL', 600);
 
-    const key = process.env.OPEN_WEATHER_API_KEY;
-
-    if (!key) {
+    if (!apiKey) {
       throw new InternalServerErrorException(
         'Missing required environment variable: OPEN_WEATHER_API_KEY',
       );
     }
-    this.apiKey = key;
+    this.apiKey = apiKey;
   }
-
 
   // Fetch weather (with Redis caching)
   async getWeatherForecast(city: string): Promise<WeatherResponseDto> {
-    const cacheKey = `weather:${city.toLowerCase()}`;
-    const cached = await this.redisService.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
+    try {
+      // Input sanitization
+      const sanitizedCity = this.sanitizeCityName(city);
+      
+      const cacheKey = `weather:${sanitizedCity.toLowerCase()}`;
+      const cached = await this.redisService.get(cacheKey);
+      
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
+      const weatherData = await this.fetchWeatherFromAPI(sanitizedCity);
+      await this.redisService.set(cacheKey, JSON.stringify(weatherData), this.weatherCacheTTL);
+
+      return weatherData;
+    } catch (error) {
+      this.logger.error(`Failed to get weather forecast for ${city}:`, error);
+      throw new InternalServerErrorException('Failed to fetch weather data');
     }
-    const url = `${URL_CONSTANTS.OPEN_WEATHER_MAP}?q=${city}&appid=${this.apiKey}&units=metric`;
-    const response = await this.httpService.axiosRef.get(url);
-  
-    const data = response.data;
-  
-    // ✅ Current Weather (first item + city info)
-    const current: CurrentWeatherDto = {
-      temperature: data.list[0].main.temp,
-      feelsLike: data.list[0].main.feels_like,
-      condition: data.list[0].weather[0].description,
-      icon: data.list[0].weather[0].icon,
-      humidity: data.list[0].main.humidity,
-      windSpeed: data.list[0].wind.speed,
-      windDirection: this.getWindDirection(data.list[0].wind.deg),
-      pressure: data.list[0].main.pressure,
+  }
+
+  // Fetch weather data from OpenWeather API
+  private async fetchWeatherFromAPI(city: string): Promise<WeatherResponseDto> {
+    try {
+      const url = `${URL_CONSTANTS.OPEN_WEATHER_MAP}?q=${encodeURIComponent(city)}&appid=${this.apiKey}&units=metric`;
+      const response = await firstValueFrom(this.httpService.get(url));
+      
+      if (!response.data || !response.data.list || !response.data.city) {
+        throw new Error('Invalid response format from OpenWeather API');
+      }
+
+      return this.transformWeatherData(response.data);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        throw new BadRequestException(`City "${city}" not found`);
+      }
+      if (error.response?.status === 401) {
+        throw new InternalServerErrorException('Invalid API key for OpenWeather');
+      }
+      if (error.response?.status === 429) {
+        throw new InternalServerErrorException('OpenWeather API rate limit exceeded');
+      }
+      throw error;
+    }
+  }
+
+  // Transform raw API data to DTO format
+  private transformWeatherData(data: any): WeatherResponseDto {
+    const current = this.extractCurrentWeather(data);
+    const hourly = this.extractHourlyWeather(data);
+    const daily = this.extractDailyWeather(data);
+
+    return {
+      city: data.city.name,
+      current,
+      hourly,
+      daily,
+    };
+  }
+
+  // Extract current weather information
+  private extractCurrentWeather(data: any): CurrentWeatherDto {
+    const firstItem = data.list[0];
+    return {
+      temperature: firstItem.main.temp,
+      feelsLike: firstItem.main.feels_like,
+      condition: firstItem.weather[0].description,
+      icon: firstItem.weather[0].icon,
+      humidity: firstItem.main.humidity,
+      windSpeed: firstItem.wind.speed,
+      windDirection: this.getWindDirection(firstItem.wind.deg),
+      pressure: firstItem.main.pressure,
       sunrise: new Date(data.city.sunrise * 1000).toISOString(),
       sunset: new Date(data.city.sunset * 1000).toISOString(),
     };
-  
-    // ✅ Hourly (3h intervals, next 24h)
-    const hourly: HourlyWeatherDto[] = data.list.map((h: any) => ({
-      time: h.dt_txt,
-      temperature: h.main.temp,
-      feelsLike: h.main.feels_like,
-      condition: h.weather[0].description,
-      icon: h.weather[0].icon,
-      precipitationChance: h.pop ? h.pop * 100 : 0,
-      windSpeed: h.wind.speed,
-    }));
-  
-    // ✅ Daily (group by date, min/max)
-    const dailyMap: Record<string, any[]> = {};
-    data.list.forEach((f: any) => {
-      const date = f.dt_txt.split(" ")[0];
-      if (!dailyMap[date]) dailyMap[date] = [];
-      dailyMap[date].push(f);
-    });
-  
-    const daily: DailyWeatherDto[] = Object.entries(dailyMap).map(
-      ([date, items]: [string, any[]]) => {
-        const temps = items.map((i) => i.main.temp);
-        const minTemp = Math.min(...temps);
-        const maxTemp = Math.max(...temps);
-        const mid = items[Math.floor(items.length / 2)]; // pick middle slot for condition
-  
-        return {
-          date,
-          minTemp,
-          maxTemp,
-          condition: mid.weather[0].description,
-          icon: mid.weather[0].icon,
-          precipitationChance: Math.round(
-            (items.reduce((sum, i) => sum + (i.pop || 0), 0) / items.length) * 100
-          ),
-          windSpeed: mid.wind.speed,
-        };
-      }
-    );
-  
-    const weatherdata = {
-        city: data.city.name,
-        current,
-        hourly,
-        daily,
-      }
-
-      await this.redisService.set(cacheKey, JSON.stringify(weatherdata), 600);
-
-
-    return weatherdata
   }
-  
-  // helper for wind
+
+  // Extract hourly weather data
+  private extractHourlyWeather(data: any): HourlyWeatherDto[] {
+    return data.list.map((item: any) => ({
+      time: item.dt_txt,
+      temperature: item.main.temp,
+      feelsLike: item.main.feels_like,
+      condition: item.weather[0].description,
+      icon: item.weather[0].icon,
+      precipitationChance: item.pop ? Math.round(item.pop * 100) : 0,
+      windSpeed: item.wind.speed,
+    }));
+  }
+
+  // Extract daily weather data
+  private extractDailyWeather(data: any): DailyWeatherDto[] {
+    const dailyMap: Record<string, any[]> = {};
+    
+    data.list.forEach((item: any) => {
+      const date = item.dt_txt.split(" ")[0];
+      if (!dailyMap[date]) dailyMap[date] = [];
+      dailyMap[date].push(item);
+    });
+
+    return Object.entries(dailyMap).map(([date, items]) => {
+      const temps = items.map((i) => i.main.temp);
+      const minTemp = Math.min(...temps);
+      const maxTemp = Math.max(...temps);
+      const mid = items[Math.floor(items.length / 2)];
+
+      return {
+        date,
+        minTemp,
+        maxTemp,
+        condition: mid.weather[0].description,
+        icon: mid.weather[0].icon,
+        precipitationChance: Math.round(
+          (items.reduce((sum, i) => sum + (i.pop || 0), 0) / items.length) * 100
+        ),
+        windSpeed: mid.wind.speed,
+      };
+    });
+  }
+
+  // Sanitize city name input
+  private sanitizeCityName(city: string): string {
+    if (!city || typeof city !== 'string') {
+      throw new BadRequestException('City name must be a valid string');
+    }
+    
+    const sanitized = city.trim().replace(/[<>\"'&]/g, '');
+    if (sanitized.length < 1 || sanitized.length > 100) {
+      throw new BadRequestException('City name must be between 1 and 100 characters');
+    }
+    
+    return sanitized;
+  }
+
+  // Helper for wind direction
   private getWindDirection(deg: number): string {
-    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return dirs[Math.round(deg / 45) % 8];
   }
-  
 }

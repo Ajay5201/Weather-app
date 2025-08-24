@@ -15,5 +15,9 @@ export const ROUTES = {
     CONTROLLER: 'weather', 
     GET_FORECAST: ':city/forecast',
   },
+  CITY_LOOK_UP: {
+    CONTROLLER: 'city-lookup', 
+    SEARCH: 'search',
+  },
   
 };
