@@ -5,7 +5,6 @@ import { ROUTES } from '../../../constants/route.constants';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiSuccessObjectResponse } from 'src/common/decorators/api-response.decorators';
 import { GetPreferenceDto } from '../dto/get-preference.dto';
-import { WeatherResponseDto } from '../../weather/dto/weather-response.dto';
 import { RemovePreferenceDto } from '../dto/remove-preference.dto';
 
 
@@ -19,8 +18,17 @@ export class UserPreferenceController {
   @ApiOperation({ summary: 'Create user session with preference' })
   @ApiBody({ type: CreatePreferenceDto })
   @ApiSuccessObjectResponse(GetPreferenceDto)
-  async addCity(@Body() dto: CreatePreferenceDto) {
-    const updated = await this.userPreferenceService.addCity(dto.sessionId, dto.city);
+  async CreateSessionWithCity(@Body() dto: CreatePreferenceDto) {
+    const updated = await this.userPreferenceService.CreateUserOrAddCityIfUserExist(dto.sessionId, dto.city);
+    return { sessionId: updated.sessionId, cities: updated.cities };
+  }
+
+  @Post(ROUTES.USER.ADD_CITY)
+  @ApiOperation({ summary: 'Create user session with preference' })
+  @ApiBody({ type: CreatePreferenceDto })
+  @ApiSuccessObjectResponse(GetPreferenceDto)
+  async AddCityToUser(@Body() dto: CreatePreferenceDto) {
+    const updated = await this.userPreferenceService.CreateUserOrAddCityIfUserExist(dto.sessionId, dto.city);
     return { sessionId: updated.sessionId, cities: updated.cities };
   }
 

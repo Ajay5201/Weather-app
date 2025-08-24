@@ -5,6 +5,10 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { CurrentWeatherDto, DailyWeatherDto, HourlyWeatherDto, WeatherResponseDto } from '../dto/weather-response.dto';
 import { URL_CONSTANTS } from '../../../constants/url.constants';
+import { MultipleCityCurrentWeatherMapDto } from '../dto/multiple-weather-response.dto';
+import { UserPreferenceService } from 'src/modules/user-preference/service/user-preference.service';
+import { UserPreference } from 'src/modules/user-preference/entity/user-preference.entity';
+
 
 @Injectable()
 export class WeatherService {
@@ -16,6 +20,7 @@ export class WeatherService {
     private readonly redisService: RedisService,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly userPreferenceService: UserPreferenceService,
   ) {
     const apiKey = this.configService.get<string>('OPEN_WEATHER_API_KEY');
     this.weatherCacheTTL = this.configService.get<number>('WEATHER_CACHE_TTL', 600);
@@ -31,15 +36,14 @@ export class WeatherService {
   // Fetch weather (with Redis caching)
   async getWeatherForecast(city: string): Promise<WeatherResponseDto> {
     try {
-      // Input sanitization
-      console.log(city)
+     
+
       const sanitizedCity = this.sanitizeCityName(city);
       
       const cacheKey = `weather:${sanitizedCity.toLowerCase()}`;
       const cached = await this.redisService.get(cacheKey);
       
       if (cached) {
-        console.log('yes')
         return JSON.parse(cached);
       }
 
@@ -170,5 +174,38 @@ export class WeatherService {
   private getWindDirection(deg: number): string {
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return dirs[Math.round(deg / 45) % 8];
+  }
+
+  async getMultipleWeatherForecasts(cities: string[]) {
+    const results = {};
+  
+    for (const city of cities) {
+      try {
+        const forecast = await this.getWeatherForecast(city);
+        results[forecast.city] = forecast.current;
+      } catch (error) {
+        this.logger.warn(`Skipping city ${city}: ${error.message}`);
+        results[city] = { error: error.message };
+      }
+    }
+  
+    return results;
+  }
+
+  async getWeatherForecastsForSession(sessionId: string) {
+    const results = {};
+    const session: UserPreference | null= await this.userPreferenceService.getUserPreferences(sessionId)
+    if (session)
+      for (const  city of session.cities) {
+        try {
+          const forecast = await this.getWeatherForecast(city);
+          results[city] = forecast.current;
+        } catch (error) {
+          this.logger.warn(`Skipping city ${city}: ${error.message}`);
+          results[city] = { error: error.message };
+        }
+      }
+  
+    return results;
   }
 }
