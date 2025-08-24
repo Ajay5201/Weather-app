@@ -4,71 +4,65 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
+import { SuccessObjectResponseDto } from './common/dto/success/success-object-response.dto';
 import {
   ErrorResponseDto,
   SuccessArrayResponseDto,
   SuccessMessageResponseDto,
   SuccessPaginatedResponseDto,
-  SuccessObjectResponseDto,
 } from './common/dto';
-import { ConfigService } from '@nestjs/config';
 
 let app: any;
 
 async function getApp() {
   if (!app) {
     app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
-
-    // Global prefix
-    app.setGlobalPrefix('api/v1');
 
     // Apply CORS
     app.enableCors({
       origin: '*',
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
     });
 
-    // Apply global pipes
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: {
-          enableImplicitConversion: true,
-        },
-        exceptionFactory: (errors) => {
-          const messages = errors.map((error) => {
-            const constraints = Object.values(error.constraints || {});
-            return `${error.property}: ${constraints.join(', ')}`;
-          });
-          return new Error(messages.join('; '));
-        },
-      }),
-    );
-
-    // Apply global filters & interceptors
+    // Apply global pipes, filters, and interceptors
+    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
 
-    // Swagger setup
-    if (process.env.ENABLE_SWAGGER !== 'false') {
+    // Set up Swagger documentation (only when enabled)
+    if (process.env.ENABLE_SWAGGER === 'true') {
+      const options = {
+        swaggerOptions: {
+          persistAuthorization: true,
+        },
+        customSiteTitle: 'NestJS API Documentation',
+        // Use a more compatible version and ensure proper loading order
+        customCss: `
+          @import url('https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui.css');
+          .swagger-ui .topbar { display: none; }
+        `,
+        customJs: [
+          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-bundle.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-standalone-preset.min.js',
+        ],
+        customJsStr: `
+          window.addEventListener('DOMContentLoaded', function() {
+            // Ensure SwaggerUIBundle is available before initialization
+            if (typeof SwaggerUIBundle !== 'undefined') {
+              console.log('SwaggerUIBundle loaded successfully');
+            } else {
+              console.error('SwaggerUIBundle not found');
+            }
+          });
+        `,
+      };
+
       const config = new DocumentBuilder()
-        .setTitle('Weather App API')
-        .setDescription(
-          'A comprehensive weather application API with real-time data, city lookup, and user preferences',
-        )
+        .setTitle('NestJS API')
+        .setDescription('NestJS API Documentation')
         .setVersion('1.0')
-        .addTag('Health', 'Health check endpoints for monitoring system status')
-        .addTag('Weather', 'Weather-related endpoints for forecasting and current conditions')
-        .addTag('City Lookup', 'City search and geocoding endpoints')
-        .addTag('User Preferences', 'User preference management endpoints')
         .addBearerAuth()
-        .addServer('http://localhost:3000', 'Development server')
-        .addServer('https://api.weatherapp.com', 'Production server')
         .build();
 
       const document = SwaggerModule.createDocument(app, config, {
@@ -81,14 +75,7 @@ async function getApp() {
         ],
       });
 
-      SwaggerModule.setup('api/docs', app, document, {
-        swaggerOptions: {
-          persistAuthorization: true,
-          displayRequestDuration: true,
-          filter: true,
-          showRequestHeaders: true,
-        },
-      });
+      SwaggerModule.setup('api/docs', app, document, options);
     }
 
     await app.init();
@@ -108,53 +95,65 @@ module.exports.default = module.exports;
 // For local development
 if (require.main === module) {
   async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
-
-    app.setGlobalPrefix('api/v1');
-
-    app.enableCors({
-      origin: configService.get<string>('CORS_ORIGIN', '*'),
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-      credentials: true,
+    const app = await NestFactory.create(AppModule, {
+      cors: {
+        origin: '*',
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        credentials: true,
+      },
     });
 
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: true },
-        exceptionFactory: (errors) => {
-          const messages = errors.map((error) => {
-            const constraints = Object.values(error.constraints || {});
-            return `${error.property}: ${constraints.join(', ')}`;
-          });
-          return new Error(messages.join('; '));
-        },
-      }),
-    );
-
+    // Apply global pipes, filters, and interceptors
+    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ResponseInterceptor());
 
-    // Swagger setup (same as above)
+    // Set up Swagger documentation with proper CDN assets
+    const options = {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+      customSiteTitle: 'NestJS API Documentation',
+      // Updated to use more stable CDN URLs and versions
+      customCss: `
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui.css');
+        .swagger-ui .topbar { display: none; }
+      `,
+      customJs: [
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-bundle.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.2/swagger-ui-standalone-preset.min.js',
+      ],
+      customJsStr: `
+        // Additional JavaScript to ensure proper loading
+        console.log('Swagger UI custom JS loaded');
+        window.addEventListener('load', function() {
+          console.log('Page fully loaded, SwaggerUIBundle available:', typeof SwaggerUIBundle !== 'undefined');
+        });
+      `,
+    };
+
     const config = new DocumentBuilder()
-      .setTitle('Weather App API')
-      .setDescription('A comprehensive weather application API')
-      .setVersion(configService.get<string>('APP_VERSION', '1.0'))
+      .setTitle('NestJS API')
+      .setDescription('NestJS API Documentation')
+      .setVersion('1.0')
       .addBearerAuth()
       .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, config, {
+      extraModels: [
+        SuccessObjectResponseDto,
+        SuccessArrayResponseDto,
+        SuccessPaginatedResponseDto,
+        SuccessMessageResponseDto,
+        ErrorResponseDto,
+      ],
+    });
+    SwaggerModule.setup('api/docs', app, document, options);
 
-    const port = configService.get<number>('PORT', 3000);
+    const port = 3002;
     await app.listen(port);
-
-    console.log(`🚀 Application is running on: http://localhost:${port}`);
-    console.log(`📚 Swagger available at: http://localhost:${port}/api/docs`);
+    console.log(`Application is running on: http://localhost:${port}`);
+    console.log(`Swagger is running on: http://localhost:${port}/api/docs`);
   }
 
   bootstrap();
