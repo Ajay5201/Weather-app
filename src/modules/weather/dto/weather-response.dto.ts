@@ -70,4 +70,7 @@ export class WeatherResponseDto {
   hourly: HourlyWeatherDto[];
   @ApiProperty({ type: () => [DailyWeatherDto] })
   daily: DailyWeatherDto[];
+  @ApiProperty()
+  summary: string;
+
 }

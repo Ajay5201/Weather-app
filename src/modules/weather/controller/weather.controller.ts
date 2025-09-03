@@ -39,4 +39,11 @@ export class WeatherController {
   }
   return this.weatherService.getWeatherForecastsForSession(sessionId);
 }
+//  @Get()
+//   async getWeather(@Query('city') city: string) {
+//     return {
+//       city,
+//       forecast: await this.weatherService.predictWeather(city),
+//     };
+//   }
 }

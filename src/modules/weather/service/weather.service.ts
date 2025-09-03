@@ -8,6 +8,7 @@ import { URL_CONSTANTS } from '../../../constants/url.constants';
 import { MultipleCityCurrentWeatherMapDto } from '../dto/multiple-weather-response.dto';
 import { UserPreferenceService } from 'src/modules/user-preference/service/user-preference.service';
 import { UserPreference } from 'src/modules/user-preference/entity/user-preference.entity';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 
 @Injectable()
@@ -15,6 +16,7 @@ export class WeatherService {
   private readonly apiKey: string;
   private readonly weatherCacheTTL: number;
   private readonly logger = new Logger(WeatherService.name);
+    private genAI: GoogleGenerativeAI
 
   constructor(
     private readonly redisService: RedisService,
@@ -24,13 +26,22 @@ export class WeatherService {
   ) {
     const apiKey = this.configService.get<string>('OPEN_WEATHER_API_KEY');
     this.weatherCacheTTL = this.configService.get<number>('WEATHER_CACHE_TTL', 600);
-
+    const gemeniApiKey = this.configService.get<string>('GEMENI_API_KEY')
+   
     if (!apiKey) {
       throw new InternalServerErrorException(
         'Missing required environment variable: OPEN_WEATHER_API_KEY',
       );
     }
+
+    if (!gemeniApiKey) {
+      throw new InternalServerErrorException(
+        'Missing required environment variable: GEMENI_API_KEY',
+      );
+    }
     this.apiKey = apiKey;
+    this.genAI = new GoogleGenerativeAI(gemeniApiKey);
+
   }
 
   // Fetch weather (with Redis caching)
@@ -49,6 +60,7 @@ export class WeatherService {
       }
 
       const weatherData = await this.fetchWeatherFromAPI(sanitizedCity);
+    
       await this.redisService.set(cacheKey, JSON.stringify(weatherData), this.weatherCacheTTL);
 
       return weatherData;
@@ -63,7 +75,7 @@ export class WeatherService {
     try {
       const url = `${URL_CONSTANTS.OPEN_WEATHER_MAP}?q=${encodeURIComponent(city)}&appid=${this.apiKey}&units=metric`;
       const response = await firstValueFrom(this.httpService.get(url));
-      
+    
       if (!response.data || !response.data.list || !response.data.city) {
         throw new Error('Invalid response format from OpenWeather API');
       }
@@ -84,16 +96,20 @@ export class WeatherService {
   }
 
   // Transform raw API data to DTO format
-  private transformWeatherData(data: any): WeatherResponseDto {
+  private async transformWeatherData(data: any): Promise<WeatherResponseDto> {
     const current = this.extractCurrentWeather(data);
     const hourly = this.extractHourlyWeather(data);
     const daily = this.extractDailyWeather(data);
 
-    return {
+    const summary = await this.sumarizeWeather(data)
+    
+
+  return {
       city: data.city.name,
       current,
       hourly,
       daily,
+      summary
     };
   }
 
@@ -208,5 +224,14 @@ export class WeatherService {
       }
   
     return results;
+  }
+
+   async sumarizeWeather(weatherData: any): Promise<string> {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `Summarize this weather report in simple friendly words for people:\n ${JSON.stringify(weatherData)}`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text();
   }
 }
